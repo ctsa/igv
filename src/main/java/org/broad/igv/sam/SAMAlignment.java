@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
 /**
  * @author jrobinso
  */
@@ -109,10 +110,15 @@ public class SAMAlignment implements Alignment {
      */
     private List<BaseModificationSet> baseModificationSets;
 
+    private short[] ccsFwdIpdVals;
+    private short[] ccsRevIpdVals;
+
     protected String mateSequence = null;
     protected String pairOrientation = "";
     private Strand firstOfPairStrand;
     private Strand secondOfPairStrand;
+
+    private CCSKineticsDecoder ccsKineticsDecoder;
 
     public SAMAlignment(SAMRecord record) {
 
@@ -158,6 +164,7 @@ public class SAMAlignment implements Alignment {
         setPairStrands();
         createAlignmentBlocks();
 
+        this.ccsKineticsDecoder = new CCSKineticsDecoder();
     }
 
     public SAMRecord getRecord() {
@@ -338,6 +345,48 @@ public class SAMAlignment implements Alignment {
             }
         }
         return baseModificationSets;
+    }
+
+    /**
+     * 1. Convert compressed IPD bytes into frames
+     * 2. Convert original CCS read-direction array into an array corresponding the index position of the read as
+     * rendered in IGV.
+     *
+     *    TODO: Add adjustment for reads with hard-clipping
+     *
+     * @param ipdBytes
+     * @param reverseSequence
+     * @return
+     */
+    private short[] parseIpdBytes(byte[] ipdBytes, boolean reverseSequence) {
+
+        short[] ipd = new short[ipdBytes.length];
+
+        int byteIndex = 0;
+        for (byte val : ipdBytes) {
+            int ipdIndex = byteIndex;
+            if (reverseSequence) {
+                ipdIndex = ipdBytes.length - (ipdIndex+1);
+            }
+            ipd[ipdIndex] = this.ccsKineticsDecoder.decode(val);
+            byteIndex++;
+        }
+
+        return ipd;
+    }
+
+    private short[] getCcsIpdVals(short[] ipdVals, String tag, boolean reversedInBam) {
+        if (ipdVals != null || ! record.hasAttribute(tag)) return null;
+        final byte[] ipdBytes = (byte[]) (record.getAttribute(tag));
+        return parseIpdBytes(ipdBytes, (reversedInBam ^ isNegativeStrand()));
+    }
+
+    public short[] getIPD(boolean isForwardStrand) {
+        if (isForwardStrand ^ isNegativeStrand()) {
+            return getCcsIpdVals(ccsFwdIpdVals, "fi", false);
+        } else {
+            return getCcsIpdVals(ccsRevIpdVals, "ri", true);
+        }
     }
 
     /**
@@ -579,6 +628,14 @@ public class SAMAlignment implements Alignment {
         return getAlignmentValueString(location, mouseX, (AlignmentTrack.RenderOptions) null);
     }
 
+    private Integer positionToReadIndex(double position) {
+        for (AlignmentBlock block : this.alignmentBlocks) {
+            if (block.contains((int) position)) {
+                return (int) (position - block.getStart()) + block.getBasesOffset();
+            }
+        }
+        return null;
+    }
 
     public String getAlignmentValueString(double position, int mouseX, AlignmentTrack.RenderOptions renderOptions) {
 
@@ -612,13 +669,13 @@ public class SAMAlignment implements Alignment {
             }
         }
 
-        // Check base modifications
-        if (renderOptions != null &&
-                (renderOptions.getColorOption() == AlignmentTrack.ColorOption.BASE_MODIFICATION ||
-                        renderOptions.getColorOption() == AlignmentTrack.ColorOption.BASE_MODIFICATION_5MC)) {
-            for (AlignmentBlock block : this.alignmentBlocks) {
-                if (block.contains((int) position)) {
-                    int p = (int) (position - block.getStart()) + block.getBasesOffset();
+        // Check base modifications & kinetics
+        if (renderOptions != null) {
+            if (renderOptions.getColorOption() == AlignmentTrack.ColorOption.BASE_MODIFICATION ||
+                        renderOptions.getColorOption() == AlignmentTrack.ColorOption.BASE_MODIFICATION_5MC) {
+                Integer readIndex = positionToReadIndex(position);
+                if (readIndex != null) {
+                    int p = readIndex;
                     if (baseModificationSets != null) {
                         String modString = "";
                         for (BaseModificationSet bmSet : baseModificationSets) {
@@ -630,6 +687,14 @@ public class SAMAlignment implements Alignment {
                         if (modString.length() > 0) {
                             return modString;
                         }
+                    }
+                }
+            } else if (renderOptions.getColorOption() == AlignmentTrack.ColorOption.FWD_IPD) {
+                short[] fwdIpdVals = getIPD(true);
+                if (fwdIpdVals != null) {
+                    Integer readIndex = positionToReadIndex(position);
+                    if (readIndex != null) {
+                        return "Fwd-alignment strand IPD: " + fwdIpdVals[readIndex] + " Frames";
                     }
                 }
             }

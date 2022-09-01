@@ -313,7 +313,8 @@ public class AlignmentRenderer {
                 if ((pixelWidth < 2) &&
                         !((AlignmentTrack.isBisulfiteColorType(renderOptions.getColorOption()) ||
                                 renderOptions.getColorOption() == ColorOption.BASE_MODIFICATION ||
-                                renderOptions.getColorOption() == ColorOption.BASE_MODIFICATION_5MC) &&
+                                renderOptions.getColorOption() == ColorOption.BASE_MODIFICATION_5MC ||
+                                renderOptions.getColorOption() == ColorOption.FWD_IPD) &&
                                 (pixelWidth >= 1))) {
                     // Optimization for really zoomed out views.  If this alignment occupies screen space already taken,
                     // and it is the default color, skip drawing.
@@ -784,7 +785,9 @@ public class AlignmentRenderer {
                             Color color = null;
                             if (bisulfiteMode) {
                                 color = bisinfo.getDisplayColor(idx);
-                            } else if (colorOption == ColorOption.BASE_MODIFICATION || colorOption == ColorOption.BASE_MODIFICATION_5MC) {
+                            } else if (colorOption == ColorOption.BASE_MODIFICATION ||
+                                    colorOption == ColorOption.BASE_MODIFICATION_5MC ||
+                                    colorOption == ColorOption.FWD_IPD) {
                                 color = Color.GRAY;
                             } else {
                                 color = nucleotideColors.get(c);
@@ -879,6 +882,47 @@ public class AlignmentRenderer {
                             }
                             g.fillRect(pX, pY, dX, Math.max(1, dY - 2));
                         }
+                    }
+                }
+            }
+        }
+
+        // Kinetic data
+        if (ColorOption.FWD_IPD == colorOption) {
+
+            short[] fwdIpdVals = alignment.getIPD(true);
+            if (fwdIpdVals != null) {
+                // Compute bounds
+                int pY = (int) rowRect.getY();
+                int dY = (int) rowRect.getHeight();
+                dX = (int) Math.max(1, (1.0 / locScale));
+                Graphics g = context.getGraphics();
+
+                for (AlignmentBlock block : alignment.getAlignmentBlocks()) {
+                    ByteSubarray bases = block.getBases();
+                    final int startOffset = bases.startOffset;
+                    final int stopOffset = startOffset + bases.length;
+                    for (int i = startOffset; i < stopOffset; i++) {
+                        short ipdval = fwdIpdVals[i];
+                        Color c = getFrameDurationColor(ipdval);
+                        g.setColor(c);
+
+                        int blockIdx = i - block.getBases().startOffset;
+                        int pX = (int) ((block.getStart() + blockIdx - bpStart) / locScale);
+
+                        // Don't draw out of clipping rect
+                        if (pX > rowRect.getMaxX()) {
+                            break;
+                        } else if (pX + dX < rowRect.getX()) {
+                            continue;
+                        }
+
+                        // Expand narrow width to make more visible
+                        if (dX < 3) {
+                            dX = 3;
+                            pX--;
+                        }
+                        g.fillRect(pX, pY, dX, Math.max(1, dY - 2));
                     }
                 }
             }
@@ -1024,6 +1068,7 @@ public class AlignmentRenderer {
         }
     }
 
+
     private Color getShadedColor(byte qual, Color foregroundColor, Color backgroundColor, IGVPreferences prefs) {
         float alpha = 0;
         int minQ = prefs.getAsInt(SAM_BASE_QUALITY_MIN);
@@ -1041,6 +1086,11 @@ public class AlignmentRenderer {
         }
         Color color = ColorUtilities.getCompositeColor(backgroundColor, foregroundColor, alpha);
         return color;
+    }
+
+    private static Color getFrameDurationColor(short frames) {
+        int alpha = Math.min(255, frames);
+        return new Color(255, 0, 0, alpha);
     }
 
     private void drawLargeIndelLabel(Graphics2D g, boolean isInsertion, String labelText, int pxCenter,
@@ -1273,6 +1323,7 @@ public class AlignmentRenderer {
             case BISULFITE:
             case BASE_MODIFICATION:
             case BASE_MODIFICATION_5MC:
+            case FWD_IPD:
                 // Just a simple forward/reverse strand color scheme that won't clash with the
                 // methylation rectangles.
                 c = (alignment.getFirstOfPairStrand() == Strand.POSITIVE) ? bisulfiteColorFw1 : bisulfiteColorRev1;
