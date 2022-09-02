@@ -912,7 +912,7 @@ public class AlignmentRenderer {
                     final int stopOffset = startOffset + bases.length;
                     for (int i = startOffset; i < stopOffset; i++) {
                         short ccsKineticVal = ccsKineticVals[i];
-                        Color c = getFrameDurationColor(ccsKineticVal);
+                        Color c = getFrameCountColor(ccsKineticVal);
                         g.setColor(c);
 
                         int blockIdx = i - block.getBases().startOffset;
@@ -1096,9 +1096,33 @@ public class AlignmentRenderer {
         return color;
     }
 
-    private static Color getFrameDurationColor(short frames) {
-        int alpha = Math.min(255, frames);
-        return new Color(255, 0, 0, alpha);
+    private static int blendColorValue(int v1, int v2, float v2Frac) {
+        return Math.min(255, (int) (v1 + (v2 - v1) * v2Frac));
+    }
+
+    private static Color blendColors(Color c1, Color c2, float c2Frac) {
+        assert(c2Frac >= 0.0 && c2Frac <= 1.0);
+        return new Color(blendColorValue(c1.getRed(), c2.getRed(), c2Frac),
+                blendColorValue(c1.getGreen(), c2.getGreen(), c2Frac),
+                blendColorValue(c1.getBlue(), c2.getBlue(), c2Frac));
+    }
+
+    private static Color getFrameCountColor(short frames) {
+        final int transition1FrameCount = 127; // Red with Alpha 0->255
+        final int transition2FrameCount = 511; // Red->Yellow
+        final Color color1 = Color.red;
+        final Color color2 = Color.yellow;
+        int alpha = Math.min(255, (frames*255)/transition1FrameCount);
+        Color blendedColor;
+        if (frames <= transition1FrameCount) {
+            blendedColor = color1;
+        } else if (frames <= transition2FrameCount) {
+            float color2Fraction = (frames-transition1FrameCount)/((float) (transition2FrameCount-transition1FrameCount));
+            blendedColor = blendColors(color1, color2, color2Fraction);
+        } else {
+            blendedColor = color2;
+        }
+        return new Color(blendedColor.getRed(), blendedColor.getGreen(), blendedColor.getBlue(), alpha);
     }
 
     private void drawLargeIndelLabel(Graphics2D g, boolean isInsertion, String labelText, int pxCenter,
