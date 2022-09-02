@@ -112,10 +112,12 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
         YC_TAG,
         BASE_MODIFICATION,
         BASE_MODIFICATION_5MC,
-        FWD_IPD,
-        REV_IPD,
-        FWD_PW,
-        REV_PW
+        SMRT_SUBREAD_IPD,
+        SMRT_SUBREAD_PW,
+        SMRT_CCS_FWD_IPD,
+        SMRT_CCS_FWD_PW,
+        SMRT_CCS_REV_IPD,
+        SMRT_CCS_REV_PW
     }
 
     public enum SortOption {
@@ -1885,10 +1887,12 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
             mappings.put("ZMW", ColorOption.ZMW);
             mappings.put("base modification", ColorOption.BASE_MODIFICATION);
             mappings.put("base modification (5mC)", ColorOption.BASE_MODIFICATION_5MC);
-            mappings.put("fwd-strand ipd", ColorOption.FWD_IPD);
-            mappings.put("rev-strand ipd", ColorOption.REV_IPD);
-            mappings.put("fwd-strand pw", ColorOption.FWD_PW);
-            mappings.put("rev-strand pw", ColorOption.REV_PW);
+            mappings.put("SMRT subread IPD", ColorOption.SMRT_SUBREAD_IPD);
+            mappings.put("SMRT subread PW", ColorOption.SMRT_SUBREAD_PW);
+            mappings.put("SMRT CCS fwd-strand IPD", ColorOption.SMRT_CCS_FWD_IPD);
+            mappings.put("SMRT CCS fwd-strand PW", ColorOption.SMRT_CCS_FWD_PW);
+            mappings.put("SMRT CCS rev-strand IPD", ColorOption.SMRT_CCS_REV_IPD);
+            mappings.put("SMRT CCS rev-strand PW", ColorOption.SMRT_CCS_REV_PW);
 
             for (Map.Entry<String, ColorOption> el : mappings.entrySet()) {
                 JRadioButtonMenuItem mi = getColorMenuItem(el.getKey(), el.getValue());
@@ -2726,12 +2730,14 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
                     colorOption;
         }
 
-        public boolean isCCSKineticsColorOption(ColorOption colorOption) {
+        public boolean isSMRTKineticsColorOption(ColorOption colorOption) {
             switch (colorOption) {
-                case FWD_IPD:
-                case REV_IPD:
-                case FWD_PW:
-                case REV_PW:
+                case SMRT_SUBREAD_IPD:
+                case SMRT_SUBREAD_PW:
+                case SMRT_CCS_FWD_IPD:
+                case SMRT_CCS_REV_IPD:
+                case SMRT_CCS_FWD_PW:
+                case SMRT_CCS_REV_PW:
                     return true;
                 default:
                     return false;

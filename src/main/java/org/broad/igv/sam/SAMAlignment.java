@@ -110,10 +110,12 @@ public class SAMAlignment implements Alignment {
      */
     private List<BaseModificationSet> baseModificationSets;
 
-    private short[] ccsFwdIpdVals;
-    private short[] ccsRevIpdVals;
-    private short[] ccsFwdPwVals;
-    private short[] ccsRevPwVals;
+    private short[] smrtIpdVals;
+    private short[] smrtPwVals;
+    private short[] smrtCcsFwdIpdVals;
+    private short[] smrtCcsFwdPwVals;
+    private short[] smrtCcsRevIpdVals;
+    private short[] smrtCcsRevPwVals;
 
     protected String mateSequence = null;
     protected String pairOrientation = "";
@@ -377,26 +379,34 @@ public class SAMAlignment implements Alignment {
         return ccsKineticVals;
     }
 
-    private short[] getCcsKineticsVals(short[] ccsKineticVals, String tag, boolean bytesReversedInBam) {
+    private short[] getSmrtKineticsVals(short[] ccsKineticVals, String tag, boolean bytesReversedInBam) {
         if (ccsKineticVals != null || ! record.hasAttribute(tag)) return null;
         final byte[] ccsKineticByteCodes = (byte[]) (record.getAttribute(tag));
         ccsKineticVals = parseCcsKineticByteCodes(ccsKineticByteCodes, (bytesReversedInBam ^ isNegativeStrand()));
         return ccsKineticVals;
     }
 
-    public short[] getIPD(boolean isForwardStrand) {
+    public short[] getIpd() {
+        return getSmrtKineticsVals(smrtIpdVals, "ip", false);
+    }
+
+    public short[] getPw() {
+        return getSmrtKineticsVals(smrtPwVals, "pw", false);
+    }
+
+    public short[] getCcsIpd(boolean isForwardStrand) {
         if (isForwardStrand ^ isNegativeStrand()) {
-            return getCcsKineticsVals(ccsFwdIpdVals, "fi", false);
+            return getSmrtKineticsVals(smrtCcsFwdIpdVals, "fi", false);
         } else {
-            return getCcsKineticsVals(ccsRevIpdVals, "ri", true);
+            return getSmrtKineticsVals(smrtCcsRevIpdVals, "ri", true);
         }
     }
 
-    public short[] getPW(boolean isForwardStrand) {
+    public short[] getCcsPw(boolean isForwardStrand) {
         if (isForwardStrand ^ isNegativeStrand()) {
-            return getCcsKineticsVals(ccsFwdPwVals, "fp", false);
+            return getSmrtKineticsVals(smrtCcsFwdPwVals, "fp", false);
         } else {
-            return getCcsKineticsVals(ccsRevPwVals, "rp", true);
+            return getSmrtKineticsVals(smrtCcsRevPwVals, "rp", true);
         }
     }
 
@@ -701,28 +711,35 @@ public class SAMAlignment implements Alignment {
                         }
                     }
                 }
-            } else if (renderOptions.isCCSKineticsColorOption(colorOption)) {
-                 if (colorOption == AlignmentTrack.ColorOption.FWD_IPD || colorOption == AlignmentTrack.ColorOption.REV_IPD) {
-                     final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.FWD_IPD);
-                     short[] ipdVals = getIPD(isForwardStrand);
-                     if (ipdVals != null) {
-                         final String strand = (isForwardStrand ? "Fwd" : "Rev");
-                         Integer readIndex = positionToReadIndex(position);
-                         if (readIndex != null) {
-                             return strand + "-alignment strand IPD: " + ipdVals[readIndex] + " Frames";
-                         }
-                     }
-                 } else {
-                     final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.FWD_PW);
-                     short[] pwVals = getPW(isForwardStrand);
-                     if (pwVals != null) {
-                         final String strand = (isForwardStrand ? "Fwd" : "Rev");
-                         Integer readIndex = positionToReadIndex(position);
-                         if (readIndex != null) {
-                             return strand + "-alignment strand PW: " + pwVals[readIndex] + " Frames";
-                         }
-                     }
-                 }
+            } else if (renderOptions.isSMRTKineticsColorOption(colorOption)) {
+                Integer readIndex = positionToReadIndex(position);
+                if (readIndex != null) {
+                    if (colorOption == AlignmentTrack.ColorOption.SMRT_SUBREAD_IPD) {
+                        short[] ipdVals = getIpd();
+                        if (ipdVals != null) {
+                            return "Subread IPD: " + ipdVals[readIndex] + " Frames";
+                        }
+                    } else if (colorOption == AlignmentTrack.ColorOption.SMRT_SUBREAD_PW) {
+                        short[] pwVals = getPw();
+                        if (pwVals != null) {
+                            return "Subread PW: " + pwVals[readIndex] + " Frames";
+                        }
+                    } else if (colorOption == AlignmentTrack.ColorOption.SMRT_CCS_FWD_IPD || colorOption == AlignmentTrack.ColorOption.SMRT_CCS_REV_IPD) {
+                        final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.SMRT_CCS_FWD_IPD);
+                        short[] ipdVals = getCcsIpd(isForwardStrand);
+                        if (ipdVals != null) {
+                            final String strand = (isForwardStrand ? "Fwd" : "Rev");
+                            return "CCS " + strand + "-alignment strand IPD: " + ipdVals[readIndex] + " Frames";
+                        }
+                    } else {
+                        final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.SMRT_CCS_FWD_PW);
+                        short[] pwVals = getCcsPw(isForwardStrand);
+                        if (pwVals != null) {
+                            final String strand = (isForwardStrand ? "Fwd" : "Rev");
+                            return "CCS " + strand + "-alignment strand PW: " + pwVals[readIndex] + " Frames";
+                        }
+                    }
+                }
             }
         }
 

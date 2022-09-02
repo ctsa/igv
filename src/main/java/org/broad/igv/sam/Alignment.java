@@ -138,9 +138,13 @@ public interface Alignment extends LocusScore {
 
     default List<BaseModificationSet> getBaseModificationSets() { return null;}
 
-    default short[] getIPD(boolean isForwardStrand) { return null;}
+    default short[] getIpd() { return null;}
 
-    default short[] getPW(boolean isForwardStrand) { return null;}
+    default short[] getPw() { return null;}
+
+    default short[] getCcsIpd(boolean isForwardStrand) { return null;}
+
+    default short[] getCcsPw(boolean isForwardStrand) { return null;}
 
     default String getAlignmentValueString(double position, int mouseX, AlignmentTrack.RenderOptions renderOptions) {
         return getValueString(position, mouseX, (WindowFunction) null);

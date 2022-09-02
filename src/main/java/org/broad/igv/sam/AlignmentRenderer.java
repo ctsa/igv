@@ -315,7 +315,7 @@ public class AlignmentRenderer {
                         !((AlignmentTrack.isBisulfiteColorType(colorOption) ||
                                 colorOption == ColorOption.BASE_MODIFICATION ||
                                 colorOption == ColorOption.BASE_MODIFICATION_5MC ||
-                                renderOptions.isCCSKineticsColorOption(colorOption)) &&
+                                renderOptions.isSMRTKineticsColorOption(colorOption)) &&
                                 (pixelWidth >= 1))) {
                     // Optimization for really zoomed out views.  If this alignment occupies screen space already taken,
                     // and it is the default color, skip drawing.
@@ -788,7 +788,7 @@ public class AlignmentRenderer {
                                 color = bisinfo.getDisplayColor(idx);
                             } else if (colorOption == ColorOption.BASE_MODIFICATION ||
                                     colorOption == ColorOption.BASE_MODIFICATION_5MC ||
-                                    renderOptions.isCCSKineticsColorOption(colorOption)) {
+                                    renderOptions.isSMRTKineticsColorOption(colorOption)) {
                                 color = Color.GRAY;
                             } else {
                                 color = nucleotideColors.get(c);
@@ -889,17 +889,21 @@ public class AlignmentRenderer {
         }
 
         // Kinetic data
-        if (renderOptions.isCCSKineticsColorOption(colorOption)) {
-            short[] ccsKineticVals;
-            if (ColorOption.FWD_IPD == colorOption || ColorOption.REV_IPD == colorOption) {
-                final boolean isForwardStrand = (ColorOption.FWD_IPD == colorOption);
-                ccsKineticVals = alignment.getIPD(isForwardStrand);
+        if (renderOptions.isSMRTKineticsColorOption(colorOption)) {
+            short[] smrtFrameCounts;
+            if (ColorOption.SMRT_SUBREAD_IPD == colorOption) {
+                smrtFrameCounts = alignment.getIpd();
+            } else if (ColorOption.SMRT_SUBREAD_PW == colorOption) {
+                smrtFrameCounts = alignment.getPw();
+            } else if (ColorOption.SMRT_CCS_FWD_IPD == colorOption || ColorOption.SMRT_CCS_REV_IPD == colorOption) {
+                final boolean isForwardStrand = (ColorOption.SMRT_CCS_FWD_IPD == colorOption);
+                smrtFrameCounts = alignment.getCcsIpd(isForwardStrand);
             } else {
-                final boolean isForwardStrand = (ColorOption.FWD_PW == colorOption);
-                ccsKineticVals = alignment.getPW(isForwardStrand);
+                final boolean isForwardStrand = (ColorOption.SMRT_CCS_FWD_PW == colorOption);
+                smrtFrameCounts = alignment.getCcsPw(isForwardStrand);
             }
 
-            if (ccsKineticVals != null) {
+            if (smrtFrameCounts != null) {
                 // Compute bounds
                 int pY = (int) rowRect.getY();
                 int dY = (int) rowRect.getHeight();
@@ -911,9 +915,7 @@ public class AlignmentRenderer {
                     final int startOffset = bases.startOffset;
                     final int stopOffset = startOffset + bases.length;
                     for (int i = startOffset; i < stopOffset; i++) {
-                        short ccsKineticVal = ccsKineticVals[i];
-                        Color c = getFrameCountColor(ccsKineticVal);
-                        g.setColor(c);
+                        g.setColor(getSmrtFrameCountColor(smrtFrameCounts[i]));
 
                         int blockIdx = i - block.getBases().startOffset;
                         int pX = (int) ((block.getStart() + blockIdx - bpStart) / locScale);
@@ -1107,7 +1109,7 @@ public class AlignmentRenderer {
                 blendColorValue(c1.getBlue(), c2.getBlue(), c2Frac));
     }
 
-    private static Color getFrameCountColor(short frames) {
+    private static Color getSmrtFrameCountColor(short frames) {
         final int transition1FrameCount = 127; // Red with Alpha 0->255
         final int transition2FrameCount = 511; // Red->Yellow
         final Color color1 = Color.red;
@@ -1355,10 +1357,12 @@ public class AlignmentRenderer {
             case BISULFITE:
             case BASE_MODIFICATION:
             case BASE_MODIFICATION_5MC:
-            case FWD_IPD:
-            case REV_IPD:
-            case FWD_PW:
-            case REV_PW:
+            case SMRT_SUBREAD_IPD:
+            case SMRT_SUBREAD_PW:
+            case SMRT_CCS_FWD_IPD:
+            case SMRT_CCS_FWD_PW:
+            case SMRT_CCS_REV_IPD:
+            case SMRT_CCS_REV_PW:
                 // Just a simple forward/reverse strand color scheme that won't clash with the
                 // methylation rectangles.
                 c = (alignment.getFirstOfPairStrand() == Strand.POSITIVE) ? bisulfiteColorFw1 : bisulfiteColorRev1;
