@@ -310,11 +310,12 @@ public class AlignmentRenderer {
                 double pixelWidth = pixelEnd - pixelStart;
                 Color alignmentColor = getAlignmentColor(alignment, track);
                 final boolean leaveMargin = (this.track.getDisplayMode() != Track.DisplayMode.SQUISHED);
+                final ColorOption colorOption = renderOptions.getColorOption();
                 if ((pixelWidth < 2) &&
-                        !((AlignmentTrack.isBisulfiteColorType(renderOptions.getColorOption()) ||
-                                renderOptions.getColorOption() == ColorOption.BASE_MODIFICATION ||
-                                renderOptions.getColorOption() == ColorOption.BASE_MODIFICATION_5MC ||
-                                renderOptions.getColorOption() == ColorOption.FWD_IPD) &&
+                        !((AlignmentTrack.isBisulfiteColorType(colorOption) ||
+                                colorOption == ColorOption.BASE_MODIFICATION ||
+                                colorOption == ColorOption.BASE_MODIFICATION_5MC ||
+                                renderOptions.isCCSKineticsColorOption(colorOption)) &&
                                 (pixelWidth >= 1))) {
                     // Optimization for really zoomed out views.  If this alignment occupies screen space already taken,
                     // and it is the default color, skip drawing.
@@ -787,7 +788,7 @@ public class AlignmentRenderer {
                                 color = bisinfo.getDisplayColor(idx);
                             } else if (colorOption == ColorOption.BASE_MODIFICATION ||
                                     colorOption == ColorOption.BASE_MODIFICATION_5MC ||
-                                    colorOption == ColorOption.FWD_IPD) {
+                                    renderOptions.isCCSKineticsColorOption(colorOption)) {
                                 color = Color.GRAY;
                             } else {
                                 color = nucleotideColors.get(c);
@@ -888,10 +889,17 @@ public class AlignmentRenderer {
         }
 
         // Kinetic data
-        if (ColorOption.FWD_IPD == colorOption) {
+        if (renderOptions.isCCSKineticsColorOption(colorOption)) {
+            short[] ccsKineticVals;
+            if (ColorOption.FWD_IPD == colorOption || ColorOption.REV_IPD == colorOption) {
+                final boolean isForwardStrand = (ColorOption.FWD_IPD == colorOption);
+                ccsKineticVals = alignment.getIPD(isForwardStrand);
+            } else {
+                final boolean isForwardStrand = (ColorOption.FWD_PW == colorOption);
+                ccsKineticVals = alignment.getPW(isForwardStrand);
+            }
 
-            short[] fwdIpdVals = alignment.getIPD(true);
-            if (fwdIpdVals != null) {
+            if (ccsKineticVals != null) {
                 // Compute bounds
                 int pY = (int) rowRect.getY();
                 int dY = (int) rowRect.getHeight();
@@ -903,8 +911,8 @@ public class AlignmentRenderer {
                     final int startOffset = bases.startOffset;
                     final int stopOffset = startOffset + bases.length;
                     for (int i = startOffset; i < stopOffset; i++) {
-                        short ipdval = fwdIpdVals[i];
-                        Color c = getFrameDurationColor(ipdval);
+                        short ccsKineticVal = ccsKineticVals[i];
+                        Color c = getFrameDurationColor(ccsKineticVal);
                         g.setColor(c);
 
                         int blockIdx = i - block.getBases().startOffset;
@@ -1324,6 +1332,9 @@ public class AlignmentRenderer {
             case BASE_MODIFICATION:
             case BASE_MODIFICATION_5MC:
             case FWD_IPD:
+            case REV_IPD:
+            case FWD_PW:
+            case REV_PW:
                 // Just a simple forward/reverse strand color scheme that won't clash with the
                 // methylation rectangles.
                 c = (alignment.getFirstOfPairStrand() == Strand.POSITIVE) ? bisulfiteColorFw1 : bisulfiteColorRev1;

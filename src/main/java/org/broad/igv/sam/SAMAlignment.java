@@ -112,6 +112,8 @@ public class SAMAlignment implements Alignment {
 
     private short[] ccsFwdIpdVals;
     private short[] ccsRevIpdVals;
+    private short[] ccsFwdPwVals;
+    private short[] ccsRevPwVals;
 
     protected String mateSequence = null;
     protected String pairOrientation = "";
@@ -348,44 +350,53 @@ public class SAMAlignment implements Alignment {
     }
 
     /**
-     * 1. Convert compressed IPD bytes into frames
+     * 1. Convert compressed kinetic bytes into frames
      * 2. Convert original CCS read-direction array into an array corresponding the index position of the read as
      * rendered in IGV.
      *
      *    TODO: Add adjustment for reads with hard-clipping
      *
-     * @param ipdBytes
+     * @param ccsKineticByteCodes
      * @param reverseSequence
      * @return
      */
-    private short[] parseIpdBytes(byte[] ipdBytes, boolean reverseSequence) {
+    private short[] parseCcsKineticByteCodes(byte[] ccsKineticByteCodes, boolean reverseSequence) {
 
-        short[] ipd = new short[ipdBytes.length];
+        short[] ccsKineticVals = new short[ccsKineticByteCodes.length];
 
-        int byteIndex = 0;
-        for (byte val : ipdBytes) {
-            int ipdIndex = byteIndex;
+        int byteCodeIndex = 0;
+        for (byte ccKineticByteCode : ccsKineticByteCodes) {
+            int valIndex = byteCodeIndex;
             if (reverseSequence) {
-                ipdIndex = ipdBytes.length - (ipdIndex+1);
+                valIndex = ccsKineticByteCodes.length - (valIndex+1);
             }
-            ipd[ipdIndex] = this.ccsKineticsDecoder.decode(val);
-            byteIndex++;
+            ccsKineticVals[valIndex] = this.ccsKineticsDecoder.decode(ccKineticByteCode);
+            byteCodeIndex++;
         }
 
-        return ipd;
+        return ccsKineticVals;
     }
 
-    private short[] getCcsIpdVals(short[] ipdVals, String tag, boolean reversedInBam) {
-        if (ipdVals != null || ! record.hasAttribute(tag)) return null;
-        final byte[] ipdBytes = (byte[]) (record.getAttribute(tag));
-        return parseIpdBytes(ipdBytes, (reversedInBam ^ isNegativeStrand()));
+    private short[] getCcsKineticsVals(short[] ccsKineticVals, String tag, boolean bytesReversedInBam) {
+        if (ccsKineticVals != null || ! record.hasAttribute(tag)) return null;
+        final byte[] ccsKineticByteCodes = (byte[]) (record.getAttribute(tag));
+        ccsKineticVals = parseCcsKineticByteCodes(ccsKineticByteCodes, (bytesReversedInBam ^ isNegativeStrand()));
+        return ccsKineticVals;
     }
 
     public short[] getIPD(boolean isForwardStrand) {
         if (isForwardStrand ^ isNegativeStrand()) {
-            return getCcsIpdVals(ccsFwdIpdVals, "fi", false);
+            return getCcsKineticsVals(ccsFwdIpdVals, "fi", false);
         } else {
-            return getCcsIpdVals(ccsRevIpdVals, "ri", true);
+            return getCcsKineticsVals(ccsRevIpdVals, "ri", true);
+        }
+    }
+
+    public short[] getPW(boolean isForwardStrand) {
+        if (isForwardStrand ^ isNegativeStrand()) {
+            return getCcsKineticsVals(ccsFwdPwVals, "fp", false);
+        } else {
+            return getCcsKineticsVals(ccsRevPwVals, "rp", true);
         }
     }
 
@@ -671,8 +682,9 @@ public class SAMAlignment implements Alignment {
 
         // Check base modifications & kinetics
         if (renderOptions != null) {
-            if (renderOptions.getColorOption() == AlignmentTrack.ColorOption.BASE_MODIFICATION ||
-                        renderOptions.getColorOption() == AlignmentTrack.ColorOption.BASE_MODIFICATION_5MC) {
+            final AlignmentTrack.ColorOption colorOption = renderOptions.getColorOption();
+            if (colorOption == AlignmentTrack.ColorOption.BASE_MODIFICATION ||
+                        colorOption == AlignmentTrack.ColorOption.BASE_MODIFICATION_5MC) {
                 Integer readIndex = positionToReadIndex(position);
                 if (readIndex != null) {
                     int p = readIndex;
@@ -689,14 +701,28 @@ public class SAMAlignment implements Alignment {
                         }
                     }
                 }
-            } else if (renderOptions.getColorOption() == AlignmentTrack.ColorOption.FWD_IPD) {
-                short[] fwdIpdVals = getIPD(true);
-                if (fwdIpdVals != null) {
-                    Integer readIndex = positionToReadIndex(position);
-                    if (readIndex != null) {
-                        return "Fwd-alignment strand IPD: " + fwdIpdVals[readIndex] + " Frames";
-                    }
-                }
+            } else if (renderOptions.isCCSKineticsColorOption(colorOption)) {
+                 if (colorOption == AlignmentTrack.ColorOption.FWD_IPD || colorOption == AlignmentTrack.ColorOption.REV_IPD) {
+                     final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.FWD_IPD);
+                     short[] ipdVals = getIPD(isForwardStrand);
+                     if (ipdVals != null) {
+                         final String strand = (isForwardStrand ? "Fwd" : "Rev");
+                         Integer readIndex = positionToReadIndex(position);
+                         if (readIndex != null) {
+                             return strand + "-alignment strand IPD: " + ipdVals[readIndex] + " Frames";
+                         }
+                     }
+                 } else {
+                     final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.FWD_PW);
+                     short[] pwVals = getPW(isForwardStrand);
+                     if (pwVals != null) {
+                         final String strand = (isForwardStrand ? "Fwd" : "Rev");
+                         Integer readIndex = positionToReadIndex(position);
+                         if (readIndex != null) {
+                             return strand + "-alignment strand PW: " + pwVals[readIndex] + " Frames";
+                         }
+                     }
+                 }
             }
         }
 

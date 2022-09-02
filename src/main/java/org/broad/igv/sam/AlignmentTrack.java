@@ -112,7 +112,10 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
         YC_TAG,
         BASE_MODIFICATION,
         BASE_MODIFICATION_5MC,
-        FWD_IPD
+        FWD_IPD,
+        REV_IPD,
+        FWD_PW,
+        REV_PW
     }
 
     public enum SortOption {
@@ -1883,6 +1886,9 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
             mappings.put("base modification", ColorOption.BASE_MODIFICATION);
             mappings.put("base modification (5mC)", ColorOption.BASE_MODIFICATION_5MC);
             mappings.put("fwd-strand ipd", ColorOption.FWD_IPD);
+            mappings.put("rev-strand ipd", ColorOption.REV_IPD);
+            mappings.put("fwd-strand pw", ColorOption.FWD_PW);
+            mappings.put("rev-strand pw", ColorOption.REV_PW);
 
             for (Map.Entry<String, ColorOption> el : mappings.entrySet()) {
                 JRadioButtonMenuItem mi = getColorMenuItem(el.getKey(), el.getValue());
@@ -2718,6 +2724,18 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
             return colorOption == null ?
                     CollUtils.valueOf(ColorOption.class, getPreferences().get(SAM_COLOR_BY), ColorOption.NONE) :
                     colorOption;
+        }
+
+        public boolean isCCSKineticsColorOption(ColorOption colorOption) {
+            switch (colorOption) {
+                case FWD_IPD:
+                case REV_IPD:
+                case FWD_PW:
+                case REV_PW:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public String getColorByTag() {

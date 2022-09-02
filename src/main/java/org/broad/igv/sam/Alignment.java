@@ -140,6 +140,8 @@ public interface Alignment extends LocusScore {
 
     default short[] getIPD(boolean isForwardStrand) { return null;}
 
+    default short[] getPW(boolean isForwardStrand) { return null;}
+
     default String getAlignmentValueString(double position, int mouseX, AlignmentTrack.RenderOptions renderOptions) {
         return getValueString(position, mouseX, (WindowFunction) null);
     }
