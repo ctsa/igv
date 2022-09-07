@@ -387,6 +387,7 @@ public class SAMAlignment implements Alignment {
      * - Initialize the processed frame count array and copy values into it
      * - Reverse frame count sequence if reverseSequence is true
      * - If the read has a leading hard-clip, remove all frame counts from the hard-clipped region
+     * - Reduce max value to fit into a signed int16
      *
      * Returns the processed frame count array
      */
@@ -783,26 +784,26 @@ public class SAMAlignment implements Alignment {
                     if (colorOption == AlignmentTrack.ColorOption.SMRT_SUBREAD_IPD) {
                         short[] ipdVals = getSmrtSubreadIpd();
                         if (ipdVals != null) {
-                            return "Subread IPD: " + ipdVals[readIndex] + " Frames";
+                            return "Subread IPD: " + Short.toUnsignedInt(ipdVals[readIndex]) + " Frames";
                         }
                     } else if (colorOption == AlignmentTrack.ColorOption.SMRT_SUBREAD_PW) {
                         short[] pwVals = getSmrtSubreadPw();
                         if (pwVals != null) {
-                            return "Subread PW: " + pwVals[readIndex] + " Frames";
+                            return "Subread PW: " + Short.toUnsignedInt(pwVals[readIndex]) + " Frames";
                         }
                     } else if (colorOption == AlignmentTrack.ColorOption.SMRT_CCS_FWD_IPD || colorOption == AlignmentTrack.ColorOption.SMRT_CCS_REV_IPD) {
                         final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.SMRT_CCS_FWD_IPD);
                         short[] ipdVals = getSmrtCcsIpd(isForwardStrand);
                         if (ipdVals != null) {
                             final String strand = (isForwardStrand ? "fwd" : "rev");
-                            return "CCS " + strand + "-strand aligned IPD: " + ipdVals[readIndex] + " Frames";
+                            return "CCS " + strand + "-strand aligned IPD: " + Short.toUnsignedInt(ipdVals[readIndex]) + " Frames";
                         }
                     } else {
                         final boolean isForwardStrand = (colorOption == AlignmentTrack.ColorOption.SMRT_CCS_FWD_PW);
                         short[] pwVals = getSmrtCcsPw(isForwardStrand);
                         if (pwVals != null) {
                             final String strand = (isForwardStrand ? "fwd" : "rev");
-                            return "CCS " + strand + "-strand aligned PW: " + pwVals[readIndex] + " Frames";
+                            return "CCS " + strand + "-strand aligned PW: " + Short.toUnsignedInt(pwVals[readIndex]) + " Frames";
                         }
                     }
                 }
