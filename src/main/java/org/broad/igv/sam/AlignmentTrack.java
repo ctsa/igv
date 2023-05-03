@@ -101,6 +101,7 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
         BASE_MODIFICATION,
         BASE_MODIFICATION_5MC,
         BASE_MODIFICATION_C,
+        BASE_MODIFICATION_6MA,
         SMRT_SUBREAD_IPD,
         SMRT_SUBREAD_PW,
         SMRT_CCS_FWD_IPD,
