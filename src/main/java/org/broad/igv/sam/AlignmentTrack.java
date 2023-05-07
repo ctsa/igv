@@ -110,7 +110,7 @@ public class AlignmentTrack extends AbstractTrack implements IGVEventObserver {
         SMRT_CCS_REV_PW;
 
         public boolean isBaseMod() {
-            return this == BASE_MODIFICATION || this == BASE_MODIFICATION_5MC || this == BASE_MODIFICATION_C;
+            return this == BASE_MODIFICATION || this == BASE_MODIFICATION_5MC || this == BASE_MODIFICATION_C || this == BASE_MODIFICATION_6MA;
         }
 
         public boolean isSMRTKinetics() {
